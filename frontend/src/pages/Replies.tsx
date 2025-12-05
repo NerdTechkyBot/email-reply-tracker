@@ -37,7 +37,6 @@ const Replies = () => {
   const [deleting, setDeleting] = useState(false);
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [hideAutoReplies, setHideAutoReplies] = useState(false);
-  const [reclassifying, setReclassifying] = useState(false);
 
   useEffect(() => {
     fetchReplies();
@@ -178,32 +177,33 @@ const Replies = () => {
     }
   };
 
-  const handleReclassifyAll = async () => {
-    if (!confirm('This will re-classify all existing messages. Continue?')) {
-      return;
-    }
-
-    setReclassifying(true);
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/sync/reclassify`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      alert('Re-classification started! Refresh in a few seconds.');
-      setTimeout(() => fetchReplies(), 3000);
-    } catch (error) {
-      console.error('Failed to re-classify:', error);
-      alert('Failed to start re-classification. Please try again.');
-    } finally {
-      setReclassifying(false);
-    }
-  };
+  // Uncomment if you want to add a "Reclassify All" button
+  // const handleReclassifyAll = async () => {
+  //   if (!confirm('This will re-classify all existing messages. Continue?')) {
+  //     return;
+  //   }
+  //
+  //   setReclassifying(true);
+  //   try {
+  //     await axios.post(
+  //       `${import.meta.env.VITE_API_BASE_URL}/sync/reclassify`,
+  //       {},
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${localStorage.getItem('token')}`
+  //         }
+  //       }
+  //     );
+  //
+  //     alert('Re-classification started! Refresh in a few seconds.');
+  //     setTimeout(() => fetchReplies(), 3000);
+  //   } catch (error) {
+  //     console.error('Failed to re-classify:', error);
+  //     alert('Failed to start re-classification. Please try again.');
+  //   } finally {
+  //     setReclassifying(false);
+  //   }
+  // };
 
   return (
     <div className="p-8">
