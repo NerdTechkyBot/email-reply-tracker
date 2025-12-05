@@ -11,8 +11,9 @@ const router = Router();
 router.get('/google', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const state = req.query.state as string;
-    const callbackUrl = `${req.protocol}://${req.get('host')}/v1/auth/google/callback`;
-    const authUrl = getAuthUrl(callbackUrl, state);
+    // Use environment variable or construct from request
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get('host')}/v1/auth/google/callback`;
+    const authUrl = getAuthUrl(redirectUri, state);
 
     res.redirect(authUrl);
   } catch (error) {
@@ -22,7 +23,9 @@ router.get('/google', async (req: Request, res: Response, next: NextFunction) =>
 
 router.post('/google/init', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authUrl = getAuthUrl(`${req.protocol}://${req.get('host')}/v1/auth/google/callback`);
+    // Use environment variable or construct from request
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get('host')}/v1/auth/google/callback`;
+    const authUrl = getAuthUrl(redirectUri);
 
     res.json({ authUrl });
   } catch (error) {
@@ -40,7 +43,8 @@ router.get('/google/callback', async (req: Request, res: Response, _next: NextFu
     }
 
     // Exchange code for tokens
-    const tokens = await getTokensFromCode(code, `${req.protocol}://${req.get('host')}/v1/auth/google/callback`);
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get('host')}/v1/auth/google/callback`;
+    const tokens = await getTokensFromCode(code, redirectUri);
 
     if (!tokens.access_token || !tokens.refresh_token) {
       return res.redirect(`${process.env.FRONTEND_URL}/mailboxes?error=token_exchange_failed`);
