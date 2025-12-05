@@ -493,13 +493,13 @@ router.post('/all', authenticate, async (req: AuthRequest, res: Response, next: 
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       results
     });
 
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 

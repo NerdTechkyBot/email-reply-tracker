@@ -6,7 +6,7 @@ import { AppError } from '../middleware/errorHandler';
 const router = Router();
 
 // Debug endpoint to check database contents (no auth for debugging)
-router.get('/debug', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/debug', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const { data: messages } = await supabase
       .from('messages')

@@ -6,7 +6,7 @@ import { AppError } from '../middleware/errorHandler';
 const router = Router();
 
 // Get analytics overview
-router.get('/overview', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/overview', authenticate, async (_req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // Get all classifications for user's mailboxes
     const { data: classifications, error } = await supabase

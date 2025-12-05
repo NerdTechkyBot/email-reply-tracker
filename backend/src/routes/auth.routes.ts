@@ -31,7 +31,7 @@ router.post('/google/init', async (req: Request, res: Response, next: NextFuncti
 });
 
 // Handle Google OAuth callback (GET - called by Google)
-router.get('/google/callback', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/google/callback', async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { code } = req.query;
 
@@ -197,6 +197,10 @@ router.post('/google/callback', async (req: Request, res: Response, next: NextFu
     }
 
     // Store mailbox in database
+    if (!user) {
+      throw new AppError('User creation failed', 500);
+    }
+
     const { data: mailbox, error } = await supabase
       .from('mailboxes')
       .insert({
