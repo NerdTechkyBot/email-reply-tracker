@@ -232,15 +232,8 @@ router.post('/google/callback', async (req: Request, res: Response, next: NextFu
       { expiresIn: '30d' }
     );
 
-    res.json({
-      success: true,
-      token,
-      mailbox: {
-        id: mailbox.id,
-        email_address: mailbox.email_address,
-        status: mailbox.status
-      }
-    });
+    // Redirect to frontend with token
+    return res.redirect(`${process.env.FRONTEND_URL}/oauth/callback?token=${token}&email=${encodeURIComponent(mailbox.email_address)}`);
   } catch (error) {
     next(error);
   }

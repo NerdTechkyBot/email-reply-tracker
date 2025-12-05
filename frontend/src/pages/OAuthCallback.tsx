@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -10,7 +9,8 @@ const OAuthCallback = () => {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const code = searchParams.get('code');
+      const token = searchParams.get('token');
+      const email = searchParams.get('email');
       const error = searchParams.get('error');
 
       if (error) {
@@ -20,37 +20,24 @@ const OAuthCallback = () => {
         return;
       }
 
-      if (!code) {
+      if (!token) {
         setStatus('error');
-        setMessage('No authorization code received');
+        setMessage('No authorization token received');
         setTimeout(() => navigate('/mailboxes'), 3000);
         return;
       }
 
       try {
-        // Send the authorization code to the backend
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/auth/google/callback`,
-          { 
-            code,
-            redirectUrl: `${window.location.origin}/oauth/callback`
-          }
-        );
-
-        if (response.data.token) {
-          // Store the JWT token
-          localStorage.setItem('token', response.data.token);
-          
-          setStatus('success');
-          setMessage('Mailbox connected successfully! Redirecting...');
-          setTimeout(() => navigate('/mailboxes'), 2000);
-        } else {
-          throw new Error('Failed to connect mailbox');
-        }
+        // Store the JWT token
+        localStorage.setItem('token', token);
+        
+        setStatus('success');
+        setMessage(`Mailbox ${email} connected successfully! Redirecting...`);
+        setTimeout(() => navigate('/mailboxes'), 2000);
       } catch (error: any) {
         console.error('OAuth callback error:', error);
         setStatus('error');
-        setMessage(error.response?.data?.message || 'Failed to connect mailbox. Please try again.');
+        setMessage('Failed to connect mailbox. Please try again.');
         setTimeout(() => navigate('/mailboxes'), 3000);
       }
     };
