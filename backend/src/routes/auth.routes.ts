@@ -7,6 +7,111 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
+// Login with email and password
+router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      throw new AppError('Email and password are required', 400);
+    }
+
+    // Static credentials check
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'aquib@theglobalassociates.com';
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Encore@54321';
+
+    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    // For admin login, use the user that has mailboxes
+    // Find the user with the most mailboxes (the main account)
+    const { data: mailboxUsers } = await supabase
+      .from('mailboxes')
+      .select('user_id')
+      .limit(1000);
+
+    let mainUserId: string | null = null;
+    
+    if (mailboxUsers && mailboxUsers.length > 0) {
+      // Count mailboxes per user
+      const userCounts = mailboxUsers.reduce((acc: any, mb: any) => {
+        acc[mb.user_id] = (acc[mb.user_id] || 0) + 1;
+        return acc;
+      }, {});
+      
+      // Get user with most mailboxes
+      mainUserId = Object.entries(userCounts)
+        .sort(([, a]: any, [, b]: any) => b - a)[0][0] as string;
+    }
+
+    let user = null;
+    
+    if (mainUserId) {
+      // Use the main user account
+      const { data: mainUser } = await supabase
+        .from('users')
+        .select('id, email, name')
+        .eq('id', mainUserId)
+        .single();
+      
+      user = mainUser;
+    }
+
+    if (!user) {
+      // Fallback: find or create user by email
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id, email, name')
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        user = existingUser;
+      } else {
+        const { data: newUser, error: userError } = await supabase
+          .from('users')
+          .insert({
+            email: email,
+            name: 'Admin User'
+          })
+          .select()
+          .single();
+
+        if (userError) {
+          logger.error('Failed to create user', { error: userError });
+          throw new AppError('Failed to create user', 500);
+        }
+        user = newUser;
+      }
+    }
+
+    if (!user) {
+      throw new AppError('Failed to authenticate', 500);
+    }
+
+    // Generate JWT token
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Initialize Google OAuth flow
 router.get('/google', async (req: Request, res: Response, next: NextFunction) => {
   try {

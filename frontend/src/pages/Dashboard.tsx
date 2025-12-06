@@ -128,9 +128,9 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600 mt-1">AI-powered email reply analytics</p>
       </div>
 
@@ -185,15 +185,34 @@ const Dashboard = () => {
             Performance by Mailbox
           </h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={analytics?.byMailbox || []}>
+            <BarChart 
+              data={analytics?.byMailbox?.map(item => ({
+                ...item,
+                short_email: item.email_address?.split('@')[0] || item.email_address
+              })) || []}
+              margin={{ bottom: 60 }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="email_address" angle={-45} textAnchor="end" height={100} />
+              <XAxis 
+                dataKey="short_email" 
+                angle={-45} 
+                textAnchor="end" 
+                height={80}
+                interval={0}
+                tick={{ fontSize: 12 }}
+              />
               <YAxis />
-              <Tooltip />
+              <Tooltip 
+                formatter={(value, name) => [value, name]}
+                labelFormatter={(label) => {
+                  const item = analytics?.byMailbox?.find(m => m.email_address?.split('@')[0] === label);
+                  return item?.email_address || label;
+                }}
+              />
               <Legend />
-              <Bar dataKey="positive" fill="#10b981" />
-              <Bar dataKey="warm" fill="#E66B2B" />
-              <Bar dataKey="negative" fill="#ef4444" />
+              <Bar dataKey="positive" fill="#10b981" name="Positive" />
+              <Bar dataKey="warm" fill="#E66B2B" name="Warm" />
+              <Bar dataKey="negative" fill="#ef4444" name="Negative" />
             </BarChart>
           </ResponsiveContainer>
         </div>

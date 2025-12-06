@@ -102,6 +102,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next: Next
       query = query.lte('message.received_at', to);
     }
 
+    // Filter by user's mailboxes
+    query = query.eq('message.thread.mailbox.user_id', req.userId);
+
     const { data, error, count } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSizeNum - 1);

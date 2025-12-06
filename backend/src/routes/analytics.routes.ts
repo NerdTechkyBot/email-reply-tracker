@@ -6,7 +6,7 @@ import { AppError } from '../middleware/errorHandler';
 const router = Router();
 
 // Get analytics overview
-router.get('/overview', authenticate, async (_req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/overview', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // Get all classifications for user's mailboxes
     const { data: classifications, error } = await supabase
@@ -22,7 +22,8 @@ router.get('/overview', authenticate, async (_req: AuthRequest, res: Response, n
             )
           )
         )
-      `);
+      `)
+      .eq('message.thread.mailbox.user_id', req.userId);
 
     if (error) {
       throw new AppError('Failed to fetch analytics', 500);
@@ -68,6 +69,29 @@ router.get('/overview', authenticate, async (_req: AuthRequest, res: Response, n
     });
 
     mailboxMap.forEach(value => byMailbox.push(value));
+
+    // Get all user's mailboxes to include those with 0 replies
+    const { data: allMailboxes } = await supabase
+      .from('mailboxes')
+      .select('id, email_address')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false });
+
+    // Add mailboxes with 0 replies
+    if (allMailboxes) {
+      allMailboxes.forEach(mailbox => {
+        if (!mailboxMap.has(mailbox.id)) {
+          byMailbox.push({
+            mailbox_id: mailbox.id,
+            email_address: mailbox.email_address,
+            positive: 0,
+            warm: 0,
+            negative: 0,
+            neutral: 0
+          });
+        }
+      });
+    }
 
     // Trend by day (last 30 days)
     const thirtyDaysAgo = new Date();

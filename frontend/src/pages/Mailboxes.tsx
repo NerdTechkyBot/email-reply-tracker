@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Mail, CheckCircle, XCircle, RefreshCw, Download, Trash2 } from 'lucide-react';
 import axios from 'axios';
+import SyncProgressModal from '../components/SyncProgressModal';
 
 interface Mailbox {
   id: string;
@@ -14,7 +15,7 @@ interface Mailbox {
 const Mailboxes = () => {
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -64,28 +65,36 @@ const Mailboxes = () => {
   };
 
   const handleSyncAll = async () => {
-    setSyncing(true);
+    if (mailboxes.length === 0) {
+      alert('No mailboxes to sync. Please connect a mailbox first.');
+      return;
+    }
+    
+    // Show the sync modal
+    setShowSyncModal(true);
+  };
+
+  const handleSyncComplete = async () => {
+    // Hide modal and refresh data
+    setShowSyncModal(false);
+    
+    // Actually trigger the sync API in background
     try {
-      const response = await axios.post(
+      await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/sync/all`,
-        { maxResults: 10 },
+        { maxResults: 50 },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         }
       );
-
-      if (response.data.success) {
-        alert(`Sync complete! Processed emails from ${response.data.results.length} mailbox(es)`);
-        fetchMailboxes(); // Refresh the list
-      }
     } catch (error) {
-      console.error('Sync failed:', error);
-      alert('Failed to sync emails. Please try again.');
-    } finally {
-      setSyncing(false);
+      console.error('Background sync failed:', error);
     }
+    
+    // Refresh mailboxes
+    fetchMailboxes();
   };
 
   const handleDeleteMailbox = async (mailboxId: string, email: string) => {
@@ -123,29 +132,20 @@ const Mailboxes = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Mailboxes</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mailboxes</h1>
           <p className="text-gray-600 mt-1">Manage connected Gmail accounts</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
             onClick={handleSyncAll}
-            disabled={syncing || mailboxes.length === 0}
+            disabled={mailboxes.length === 0}
             className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {syncing ? (
-              <>
-                <RefreshCw size={20} className="animate-spin" />
-                Syncing...
-              </>
-            ) : (
-              <>
-                <Download size={20} />
-                Sync All Emails
-              </>
-            )}
+            <Download size={20} />
+            Sync All Emails
           </button>
           <button
             onClick={handleConnectMailbox}
@@ -182,8 +182,12 @@ const Mailboxes = () => {
               className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="bg-primary/10 p-3 rounded-xl">
-                  <Mail className="text-primary" size={24} />
+                <div className="bg-white p-2 rounded-xl border border-gray-200">
+                  <img 
+                    src="/google-logo.webp" 
+                    alt="Google" 
+                    className="w-8 h-8"
+                  />
                 </div>
                 {getStatusIcon(mailbox.status)}
               </div>
@@ -240,6 +244,13 @@ const Mailboxes = () => {
           ))}
         </div>
       )}
+
+      {/* Sync Progress Modal */}
+      <SyncProgressModal
+        isOpen={showSyncModal}
+        mailboxes={mailboxes.map(m => m.email_address)}
+        onComplete={handleSyncComplete}
+      />
     </div>
   );
 };

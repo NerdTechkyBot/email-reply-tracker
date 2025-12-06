@@ -23,6 +23,20 @@ export class GeminiService {
 
   async classifyEmail(emailBody: string, subject: string): Promise<ClassificationResult> {
     try {
+      // Check for spam patterns first (before calling AI)
+      const spamCheck = this.detectSpamPatterns(subject, emailBody);
+      if (spamCheck.isSpam) {
+        logger.info('Email detected as spam by pattern matching', { reason: spamCheck.reason });
+        return {
+          sentiment: 'spam',
+          interest_level: 'none',
+          summary: spamCheck.reason,
+          recommended_action: 'Mark as spam and ignore',
+          category: 'spam',
+          confidence_score: 0.95
+        };
+      }
+
       const prompt = this.buildPrompt(emailBody, subject);
       
       const response = await axios.post(
@@ -78,6 +92,50 @@ export class GeminiService {
     }
   }
 
+  private detectSpamPatterns(subject: string, body: string): { isSpam: boolean; reason: string } {
+    const text = `${subject} ${body}`.toLowerCase();
+    
+    // Pattern 1: Random alphanumeric codes (like 6PZGMYD, J4C5BVX)
+    // Matches 6-8 character codes with mix of letters and numbers
+    const randomCodePattern = /\b[A-Z0-9]{6,8}\b/gi;
+    const codes = text.match(randomCodePattern);
+    
+    if (codes && codes.length >= 2) {
+      // If there are 2 or more random-looking codes, likely spam
+      return {
+        isSpam: true,
+        reason: `Spam detected: Contains random tracking codes (${codes.slice(0, 2).join(', ')})`
+      };
+    }
+    
+    // Pattern 2: Subject contains random codes
+    const subjectCodes = subject.match(randomCodePattern);
+    if (subjectCodes && subjectCodes.length >= 1) {
+      return {
+        isSpam: true,
+        reason: `Spam detected: Subject contains tracking code (${subjectCodes[0]})`
+      };
+    }
+    
+    // Pattern 3: Common spam phrases with codes
+    const spamPhrases = [
+      'who should i call',
+      'who do i speak with',
+      'who handles',
+      'who is responsible for'
+    ];
+    
+    const hasSpamPhrase = spamPhrases.some(phrase => text.includes(phrase));
+    if (hasSpamPhrase && codes && codes.length >= 1) {
+      return {
+        isSpam: true,
+        reason: `Spam detected: Generic question with tracking code (${codes[0]})`
+      };
+    }
+    
+    return { isSpam: false, reason: '' };
+  }
+
   private buildPrompt(emailBody: string, subject: string): string {
     return `You are an assistant that classifies replies to B2B outbound sales emails.
 
@@ -120,7 +178,11 @@ Classification Guidelines:
 
 **OUT_OF_OFFICE** - Out of office message (human-set auto-reply)
 
-**SPAM** - Spam, unrelated, or junk email
+**SPAM** - Spam, unrelated, or junk email:
+- Emails with random tracking codes (e.g., "6PZGMYD", "J4C5BVX")
+- Generic questions with tracking codes like "who should I call | CODE123"
+- Unrelated marketing or promotional content
+- Suspicious or phishing attempts
 
 IMPORTANT: If the email is polite and mentions "future", "later", "keep in touch", or "reach out if needed", classify as WARM, not negative!
 
